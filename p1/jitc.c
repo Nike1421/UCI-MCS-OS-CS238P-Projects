@@ -27,3 +27,18 @@
  */
 
 /* research the above Needed API and design accordingly */
+int jitc_compile(const char *input, const char *output){
+        
+}
+
+struct jitc *jitc_open(const char *pathname){
+
+}
+
+void jitc_close(struct jitc *jitc){
+
+}
+
+long jitc_lookup(struct jitc *jitc, const char *symbol){
+
+}
