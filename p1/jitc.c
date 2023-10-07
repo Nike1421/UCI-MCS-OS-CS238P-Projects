@@ -27,6 +27,14 @@
  */
 
 /* research the above Needed API and design accordingly */
+
+struct jitc
+{
+    /* data */
+    void * handle;
+};
+
+
 int jitc_compile(const char *input, const char *output){
     pid_t pid, w_pid;
     int status;
@@ -45,9 +53,10 @@ int jitc_compile(const char *input, const char *output){
         execv_args[6] = (char*) input;
         execv_args[7] = NULL;
     
-        printf("EXECV PART\n");
+        /*printf("EXECV PART\n");*/
         execv("/usr/bin/gcc", execv_args);
     } else {
+        /* Part Executed By Parent */
         if ((w_pid = waitpid(pid, &status, 0)) == -1)
         {
             TRACE("CHILD ERROR");
@@ -64,15 +73,39 @@ int jitc_compile(const char *input, const char *output){
     return 0;
 }
 
-/*
-struct jitc *jitc_open(const char *pathname){
 
+struct jitc *jitc_open(const char *pathname){
+    struct jitc* jitc;
+
+    if (!(jitc = malloc(sizeof(struct jitc)))) {
+        TRACE("JITC - Out of Memory");
+        return NULL;
+    }
+
+    /*memset(jitc, 0, sizeof(struct jitc));*/
+
+    if ((jitc->handle = dlopen(pathname, RTLD_LAZY)) == NULL)
+    {
+        TRACE("JITC - Handle Is Null");
+    }
+    return jitc;
 }
+
 
 void jitc_close(struct jitc *jitc){
-
+    if (jitc) {
+        dlclose(jitc->handle);
+    }
+    FREE(jitc);
 }
 
-long jitc_lookup(struct jitc *jitc, const char *symbol){
 
-}*/
+long jitc_lookup(struct jitc *jitc, const char *symbol){
+    void * address;
+    if (NULL == (address = dlsym(jitc->handle, symbol)))
+    {
+        TRACE("JITC - Symbol Address Not Found");
+        return 0;
+    }
+    return (long) address;
+}
