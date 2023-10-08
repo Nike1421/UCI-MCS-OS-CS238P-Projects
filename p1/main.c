@@ -16,7 +16,7 @@
 /* export LD_LIBRARY_PATH=. */
 
 double sigmoid(double n){
-	return (1 / (1 + pow(EULER_NUMBER, -n)));
+	return (1 / (1 + exp(-n)));
 }
 
 static void

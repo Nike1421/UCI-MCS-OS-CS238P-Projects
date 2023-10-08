@@ -30,20 +30,27 @@
 
 struct jitc
 {
-    /* data */
+    /* To store the opaque handle */
     void * handle;
 };
 
-
+/**
+ * Compiles a C program into a dynamically loadable module.
+ *
+ * input : the file pathname of the C program
+ * output: the file pathname of the dynamically loadable module
+ *
+ * return: 0 on success, otherwise error
+ */
 int jitc_compile(const char *input, const char *output){
-    pid_t pid, w_pid;
+    pid_t pid;
     int status;
     char* execv_args[8];
     if ((pid = fork()) < 0){
         TRACE("FORK ERROR");
-        /* code */
     } else if (0 == pid) {
         /* Part Executed By Child */
+        /* Arguments for execv() */
         execv_args[0] = "/usr/bin/gcc";
         execv_args[1] = "-shared"; 
         execv_args[2] = "-o";
@@ -53,11 +60,10 @@ int jitc_compile(const char *input, const char *output){
         execv_args[6] = (char*) input;
         execv_args[7] = NULL;
     
-        /*printf("EXECV PART\n");*/
         execv("/usr/bin/gcc", execv_args);
     } else {
         /* Part Executed By Parent */
-        if ((w_pid = waitpid(pid, &status, 0)) == -1)
+        if (waitpid(pid, &status, 0) == -1)
         {
             TRACE("CHILD ERROR");
             return 1;
@@ -65,7 +71,7 @@ int jitc_compile(const char *input, const char *output){
         else
         {
             if(WIFEXITED(status)){
-                printf("Child exited with RC=%d\n",WEXITSTATUS(status));
+                printf("Process exited with Exit Status = %d\n",WEXITSTATUS(status));
             }
         }
     }
@@ -73,25 +79,37 @@ int jitc_compile(const char *input, const char *output){
     return 0;
 }
 
-
+/**
+ * Loads a dynamically loadable module into the calling process' memory for
+ * execution.
+ *
+ * pathname: the file pathname of the dynamically loadable module
+ *
+ * return: an opaque handle or NULL on error
+ */
 struct jitc *jitc_open(const char *pathname){
-    struct jitc* jitc;
+    struct jitc* jitc = malloc(sizeof(struct jitc));
 
-    if (!(jitc = malloc(sizeof(struct jitc)))) {
+    if (!jitc) {
         TRACE("JITC - Out of Memory");
         return NULL;
     }
 
-    /*memset(jitc, 0, sizeof(struct jitc));*/
-
-    if ((jitc->handle = dlopen(pathname, RTLD_LAZY)) == NULL)
+    jitc->handle = dlopen(pathname, RTLD_LAZY);
+    if (jitc->handle == NULL)
     {
         TRACE("JITC - Handle Is Null");
     }
     return jitc;
 }
 
-
+/**
+ * Unloads a previously loaded dynamically loadable module.
+ *
+ * jitc: an opaque handle previously obtained by calling jitc_open()
+ *
+ * Note: jitc may be NULL
+ */
 void jitc_close(struct jitc *jitc){
     if (jitc) {
         dlclose(jitc->handle);
@@ -99,7 +117,13 @@ void jitc_close(struct jitc *jitc){
     FREE(jitc);
 }
 
-
+/**
+ * Searches for a symbol in the dynamically loaded module associated with jitc.
+ *
+ * jitc: an opaque handle previously obtained by calling jitc_open()
+ *
+ * return: the memory address of the start of the symbol, or 0 on error
+ */
 long jitc_lookup(struct jitc *jitc, const char *symbol){
     void * address;
     if (NULL == (address = dlsym(jitc->handle, symbol)))
