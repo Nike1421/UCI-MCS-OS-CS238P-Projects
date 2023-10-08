@@ -10,8 +10,14 @@
 #include "jitc.h"
 #include "parser.h"
 #include "system.h"
+#include<math.h>
+#define EULER_NUMBER 2.71828
 
 /* export LD_LIBRARY_PATH=. */
+
+double sigmoid(double n){
+	return (1 / (1 + pow(EULER_NUMBER, -n)));
+}
 
 static void
 reflect(const struct parser_dag *dag, FILE *file)
@@ -69,12 +75,14 @@ reflect(const struct parser_dag *dag, FILE *file)
 static void
 generate(const struct parser_dag *dag, FILE *file)
 {
-	fprintf(file, "double evaluate(void) {\n");
+	fprintf(file, "typedef double (*sigmoid_t)(double);\n");
+	fprintf(file, "double evaluate(sigmoid_t sigmoid) {\n");
 	reflect(dag, file);
-	fprintf(file, "return t%d;\n}\n", dag->id);
+	fprintf(file, "return sigmoid(t%d);\n}\n", dag->id);
 }
 
-typedef double (*evaluate_t)(void);
+typedef double (*sigmoid_t)(double);
+typedef double (*evaluate_t)(sigmoid_t);
 
 int
 main(int argc, char *argv[])
@@ -128,7 +136,8 @@ main(int argc, char *argv[])
 		TRACE(0);
 		return -1;
 	}
-	printf("%f\n", fnc());
+
+	printf("%f\n", fnc(&sigmoid));
 
 	/*	done */
 
