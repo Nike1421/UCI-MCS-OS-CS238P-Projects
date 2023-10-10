@@ -11,7 +11,6 @@
 #include "parser.h"
 #include "system.h"
 #include<math.h>
-#define EULER_NUMBER 2.71828
 
 /* export LD_LIBRARY_PATH=. */
 

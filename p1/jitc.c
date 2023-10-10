@@ -14,20 +14,6 @@
 #include "system.h"
 #include "jitc.h"
 
-/**
- * Needs:
- *   fork()
- *   execv()
- *   waitpid()
- *   WIFEXITED()
- *   WEXITSTATUS()
- *   dlopen()
- *   dlclose()
- *   dlsym()
- */
-
-/* research the above Needed API and design accordingly */
-
 struct jitc
 {
     /* To store the opaque handle */
@@ -44,38 +30,38 @@ struct jitc
  */
 int jitc_compile(const char *input, const char *output){
     pid_t pid;
-    int status;
+    int child_status;
     char* execv_args[8];
+
     if ((pid = fork()) < 0){
-        TRACE("FORK ERROR");
+        TRACE("Error while creating fork");
     } else if (0 == pid) {
         /* Part Executed By Child */
         /* Arguments for execv() */
         execv_args[0] = "/usr/bin/gcc";
         execv_args[1] = "-shared"; 
-        execv_args[2] = "-o";
-        execv_args[3] = (char*) output;
-        execv_args[4] = "-fPIC";
-        execv_args[5] = "-O3";
+        execv_args[2] = "-fPIC";
+        execv_args[3] = "-O3";
+        execv_args[4] = "-o";
+        execv_args[5] = (char*) output;
         execv_args[6] = (char*) input;
         execv_args[7] = NULL;
     
         execv("/usr/bin/gcc", execv_args);
     } else {
         /* Part Executed By Parent */
-        if (waitpid(pid, &status, 0) == -1)
+        if (waitpid(pid, &child_status, 0) == -1)
         {
             TRACE("CHILD ERROR");
             return 1;
         }
         else
         {
-            if(WIFEXITED(status)){
-                printf("Process exited with Exit Status = %d\n",WEXITSTATUS(status));
+            if(WIFEXITED(child_status)){
+                printf("Process exited with Exit Status = %d\n",WEXITSTATUS(child_status));
             }
         }
     }
-    
     return 0;
 }
 
@@ -91,14 +77,14 @@ struct jitc *jitc_open(const char *pathname){
     struct jitc* jitc = malloc(sizeof(struct jitc));
 
     if (!jitc) {
-        TRACE("JITC - Out of Memory");
+        TRACE("Memory Full");
         return NULL;
     }
 
     jitc->handle = dlopen(pathname, RTLD_LAZY);
     if (jitc->handle == NULL)
     {
-        TRACE("JITC - Handle Is Null");
+        TRACE("Handle Not Found or Null");
     }
     return jitc;
 }
@@ -111,7 +97,7 @@ struct jitc *jitc_open(const char *pathname){
  * Note: jitc may be NULL
  */
 void jitc_close(struct jitc *jitc){
-    if (jitc) {
+    if (NULL != jitc) {
         dlclose(jitc->handle);
     }
     FREE(jitc);
@@ -125,10 +111,10 @@ void jitc_close(struct jitc *jitc){
  * return: the memory address of the start of the symbol, or 0 on error
  */
 long jitc_lookup(struct jitc *jitc, const char *symbol){
-    void * address;
-    if (NULL == (address = dlsym(jitc->handle, symbol)))
+    void * address = dlsym(jitc->handle, symbol);
+    if (NULL == address)
     {
-        TRACE("JITC - Symbol Address Not Found");
+        TRACE("Symbol Address Was Not Found");
         return 0;
     }
     return (long) address;
