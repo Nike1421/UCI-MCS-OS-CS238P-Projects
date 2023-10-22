@@ -53,6 +53,7 @@
 		}				\
 	} while (0)
 
+/* For Threads To Sleep */
 void us_sleep(uint64_t us);
 
 void file_delete(const char *pathname);
@@ -61,8 +62,10 @@ void safe_sprintf(char *buf, size_t len, const char *format, ...);
 
 size_t safe_strlen(const char *s);
 
+/* Size of the kernel's internal page allocation, usually 4kb */
 size_t page_size(void);
 
+/* To assign page aligned memory */
 void *memory_align(void *p, size_t n);
 
 #endif /* _SYSTEM_H_ */
