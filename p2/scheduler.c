@@ -164,9 +164,12 @@ void schedule(void){
     if(thread->thread_status == STATUS_){
         uint64_t rsp = (uint64_t) thread->stack.memory; /* initialize this variable to the memory location (top of it) */
         __asm__ volatile ("mov %[rs], %%rsp \n" : [rs] "+r" (rsp) ::);
+        thread->thread_status = STATUS_RUNNING;
+        thread->fnc(thread->arg);
     }
-    thread->thread_status = STATUS_RUNNING;
-    longjmp(thread->ctx, 1);
+    else{
+        longjmp(thread->ctx, 1);    
+    }
 }
 
 /**
