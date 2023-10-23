@@ -66,7 +66,6 @@ static struct
  * return: 0 on success, otherwise error
  */
 int scheduler_create(scheduler_fnc_t fnc, void *arg){
-    void *addr;
     size_t page_size_v;
     static int id = 1;
     struct Thread *thread = malloc(1024 * 1024);
@@ -113,15 +112,23 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg){
  */
 
 void scheduler_execute(void){
-    int temp = setjmp(state.ctx);
+    /* int temp = setjmp(state.ctx); */
     /* schedule() */
     /* destroy() */
 }
 
 struct Thread* thread_candidate(void){
     struct Thread* head_thread = state.head;
-    struct Thread* next_thread_in_line = if(state.current_thread->linked_thread) ? state.current_thread->linked_thread : head_thread;
+    struct Thread* next_thread_in_line;
     int i = 0;
+
+    if(state.current_thread->linked_thread){
+        next_thread_in_line =  state.current_thread->linked_thread;
+    } else
+    {
+        next_thread_in_line = head_thread;
+    }
+    
 
     if (head_thread->thread_status == STATUS_)
     {
@@ -137,7 +144,7 @@ struct Thread* thread_candidate(void){
     {
         if (i == state.number_of_threads)
         {
-            return null;
+            return NULL;
         } 
         i++;    
     }
@@ -145,30 +152,29 @@ struct Thread* thread_candidate(void){
     return next_thread_in_line;   
 }
 
+/**
+ * runs the thread returned by thread_candidate function
+*/
 void schedule(void){
-    struct Thread* executing_thread = thread_candidate();
+    struct Thread *thread = thread_candidate();
+    if(NULL == thread){
+        return;
+    }
+    state.current_thread = thread;
+    if(thread->thread_status == STATUS_){
+        uint64_t rsp = (uint64_t) thread->stack.memory; /* initialize this variable to the memory location (top of it) */
+        __asm__ volatile ("mov %[rs], %%rsp \n" : [rs] "+r" (rsp) ::);
+    }
+    thread->thread_status = STATUS_RUNNING;
+    longjmp(thread->ctx, 1);
 }
 
 /**
  * Called from within a user thread to yield the CPU to another user thread.
  */
 
-/* void scheduler_yield(void); */
+void scheduler_yield(void){
 
-
-/**
- * runs the thread returned by thread_candidate function
-*/
-void schedule(void){
-    struct Thread thread = thread_candidate();
-    if(NULL == thread){
-        return;
-    }
-    state.current_thread = thread;
-    if(thread->thread_status == STATUS_){
-        uint64_t rsp = thread->stack.memory; /* initialize this variable to the memory location (top of it) */
-        __asm__ volatile ("mov %[rs], %%rsp \n" : [rs] "+r" (rsp) ::);
-    }
-    thread->thread_status = STATUS_RUNNING;
-    longjmp(thread->ctx, 1);
 }
+
+
