@@ -52,6 +52,7 @@ static struct
 {
     struct Thread *head;
     struct Thread *current_thread;
+    int number_of_threads;
     jmp_buf ctx;
 } state;
 
@@ -91,9 +92,10 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg){
             iterator_thread = iterator_thread->linked_thread;
         }
         iterator_thread->linked_thread = thread;
-        iterator_thread = state->head;
+        iterator_thread = state.head;
     } else {
         state.head = thread;
+        state.number_of_threads++;
     }
     return 0;
 }
@@ -111,7 +113,40 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg){
  */
 
 void scheduler_execute(void){
+    int temp = setjmp(state.ctx);
+    /* schedule() */
+    /* destroy() */
+}
+
+struct Thread* thread_candidate(void){
+    struct Thread* head_thread = state.head;
+    struct Thread* next_thread_in_line = if(state.current_thread->linked_thread) ? state.current_thread->linked_thread : head_thread;
+    int i = 0;
+
+    if (head_thread->thread_status == STATUS_)
+    {
+        return head_thread;
+    }
+
+    if (next_thread_in_line->thread_status == STATUS_ || next_thread_in_line->thread_status == STATUS_SLEEPING)
+    {
+        return next_thread_in_line;
+    }
     
+    while (next_thread_in_line->thread_status == STATUS_TERMINATED)
+    {
+        if (i == state.number_of_threads)
+        {
+            return null;
+        } 
+        i++;    
+    }
+    
+    return next_thread_in_line;   
+}
+
+void schedule(void){
+    struct Thread* executing_thread = thread_candidate();
 }
 
 /**
