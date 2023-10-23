@@ -81,23 +81,6 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg){
     thread->stack.memory = memory_align(thread->stack.memory_, page_size_v);
     thread->linked_thread = NULL;
 
-    /* Link */
-    /* if (thread->id != 1)
-    {
-        struct Thread *iterator_thread = state.head;
-        while (state.head != iterator_thread->linked_thread)
-        {
-            iterator_thread = iterator_thread->linked_thread;
-        }
-        iterator_thread->linked_thread = thread;
-        thread->linked_thread = state.head;
-        iterator_thread = state.head;
-    } else {
-        state.head = thread;
-        thread->linked_thread = thread;
-        
-    } */
-
     if (state.head == NULL) {
         state.head = thread;
         state.tail = state.head;
@@ -148,7 +131,14 @@ struct Thread* thread_candidate(void){
     struct Thread* head_thread = state.head;
     struct Thread* next_thread;
 
-    if (state.current_thread == NULL && head_thread->thread_status == STATUS_) {
+    if (state.current_thread == NULL || head_thread->thread_status == STATUS_) {
+        if (state.head == NULL)
+        {
+            return NULL;
+        } else if (state.head == state.tail)
+        {
+            return state.head;
+        }
         state.current_thread = head_thread;
         return head_thread;
     } else {
@@ -165,9 +155,6 @@ struct Thread* thread_candidate(void){
         }
         return NULL;
     }
-    
-    /* printf("%d SSSS\n", state.current_thread->id); */
-    /* return NULL; */
 }
 
 /**
@@ -180,15 +167,17 @@ void schedule(void){
     if(NULL == thread){
         return;
     }
+
     state.current_thread = thread;
+
     if(thread->thread_status == STATUS_){
         uint64_t rsp = (uint64_t) thread->stack.memory; /* initialize this variable to the memory location (top of it) */
         __asm__ volatile ("mov %[rs], %%rsp \n" : [rs] "+r" (rsp) ::);
         thread->thread_status = STATUS_RUNNING;
-        printf("%d ", state.current_thread->id);
+        
         thread->fnc(thread->arg);
         thread->thread_status = STATUS_TERMINATED;
-        printf("%d\n", thread->id);
+        
         longjmp(state.ctx, 2);
     }
     else{
@@ -201,6 +190,20 @@ void destroy(void){
     
     struct Thread *current_thread = state.current_thread;
 
+    if (state.current_thread == state.tail)
+    {
+        state.tail->linked_thread = NULL;
+        state.tail = NULL;
+        state.head = NULL;
+    }
+     
+    else
+    {
+        state.head = current_thread->linked_thread;
+    }
+    
+
+    state.current_thread = NULL;
     FREE(current_thread->stack.memory_);
     FREE(current_thread);
     
