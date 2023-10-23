@@ -49,4 +49,10 @@ void scheduler_execute(void);
 
 void scheduler_yield(void);
 
+void schedule(void);
+
+void destroy(void);
+
+
+
 #endif /* _SCHEDULER_H_ */
