@@ -154,3 +154,21 @@ void schedule(void){
  */
 
 /* void scheduler_yield(void); */
+
+
+/**
+ * runs the thread returned by thread_candidate function
+*/
+void schedule(void){
+    struct Thread thread = thread_candidate();
+    if(NULL == thread){
+        return;
+    }
+    state.current_thread = thread;
+    if(thread->thread_status == STATUS_){
+        uint64_t rsp = thread->stack.memory; /* initialize this variable to the memory location (top of it) */
+        __asm__ volatile ("mov %[rs], %%rsp \n" : [rs] "+r" (rsp) ::);
+    }
+    thread->thread_status = STATUS_RUNNING;
+    longjmp(thread->ctx, 1);
+}
