@@ -198,7 +198,13 @@ void destroy(void){
  */
 
 void scheduler_yield(void){
-
+    if(setjmp(state.current_thread->ctx)){
+        return;
+    }
+    else{
+        state.current_thread->thread_status=STATUS_SLEEPING;
+        longjmp(state.ctx, 0);
+    }
 }
 
 
