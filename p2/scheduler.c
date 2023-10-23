@@ -112,7 +112,20 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg){
  */
 
 void scheduler_execute(void){
-    /* int temp = setjmp(state.ctx); */
+    int temp = setjmp(state.ctx);
+    switch (temp)
+    {
+    case 0:
+        /* code */
+        schedule();
+        break;
+    case 1:
+        destroy();
+        break;
+    default:
+        break;
+    }
+    
     /* schedule() */
     /* destroy() */
 }
@@ -170,6 +183,14 @@ void schedule(void){
     else{
         longjmp(thread->ctx, 1);    
     }
+}
+
+void destroy(void){
+    struct Thread *current_thread = state.current_thread;
+    state.current_thread->thread_status = STATUS_TERMINATED;
+    state.current_thread = NULL;
+    FREE(current_thread->stack.memory_);
+    FREE(current_thread);
 }
 
 /**
