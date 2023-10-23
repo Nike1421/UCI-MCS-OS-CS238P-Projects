@@ -14,6 +14,7 @@
 #include <setjmp.h>
 #include "system.h"
 #include "scheduler.h"
+#include <signal.h>
 
 /**
  * Needs:
@@ -112,15 +113,22 @@ void scheduler_execute(void){
     {
     case 0:
     case 1:
+        settimer();
         schedule();
         break;
     case 2:
+        cleartimer();
         destroy();
+        settimer();
         schedule();
         break;
     default:
         break;
     }
+
+    /* setjmp(state.ctx);
+    schedule();
+    destroy(); */
     
     /* schedule() */
     /* destroy() */
@@ -155,6 +163,41 @@ struct Thread* thread_candidate(void){
         }
         return NULL;
     }
+    
+    /* if (state.current_thread == NULL)
+    {
+        next_thread = state.head;
+    } 
+    else
+    {
+        next_thread = state.current_thread;
+    }
+
+    next_thread = next_thread->linked_thread;
+
+    while (head_thread != next_thread)
+    {
+        if (next_thread->thread_status == STATUS_ || next_thread->thread_status == STATUS_SLEEPING)
+        {
+            state.current_thread = next_thread;
+            return next_thread;
+        }
+        next_thread = next_thread->linked_thread;
+        
+    }
+    
+    if (head_thread->thread_status == STATUS_TERMINATED)
+    {
+        return NULL;
+    }
+    else
+    {
+        state.current_thread = next_thread;
+        return head_thread;
+    } */
+    
+    
+    
 }
 
 /**
@@ -207,7 +250,7 @@ void destroy(void){
     FREE(current_thread->stack.memory_);
     FREE(current_thread);
     
-/*     longjmp(state.ctx, 1); */
+    longjmp(state.ctx, 1);
 }
 
 /**
@@ -221,6 +264,21 @@ void scheduler_yield(void){
     else{
         longjmp(state.ctx, 1);
     }
+}
+
+void handler(int signum){
+    signum++;
+    scheduler_yield();
+}
+    
+void settimer(void){
+    signal(SIGALRM, handler);
+    alarm(1);
+}
+
+void cleartimer(void){
+    alarm(0);
+    signal(SIGALRM, SIG_DFL);
 }
 
 

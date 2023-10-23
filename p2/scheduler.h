@@ -53,6 +53,8 @@ void schedule(void);
 
 void destroy(void);
 
+void settimer(void);
 
+void cleartimer(void);
 
 #endif /* _SCHEDULER_H_ */
