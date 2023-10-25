@@ -114,7 +114,7 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
 void scheduler_execute(void)
 {
 
-    int temp = setjmp(state.ctx);
+ /*    int temp = setjmp(state.ctx);
     switch (temp)
     {
     case 0:
@@ -130,15 +130,15 @@ void scheduler_execute(void)
         break;
     default:
         break;
-    }
+    } */
 
-    /* setjmp(state.ctx);
+    setjmp(state.ctx);
+
+    signal(SIGALRM, (void (*)(int))scheduler_yield);
+    alarm(1);
     schedule();
-    printf("%dA\n", state.current_thread->id);
-    destroy(); */
+    destroy();
 
-    /* schedule() */
-    /* destroy() */
 }
 
 struct Thread *thread_candidate(void)
@@ -146,17 +146,16 @@ struct Thread *thread_candidate(void)
 
     struct Thread *head_thread = state.head;
     struct Thread *next_thread;
-
+    
     /* Enters the if block twice */
     /* Once when all threads have status STATUS_ */
     /* Second time when all threads are terminated and we free their memory */
     if (state.current_thread == NULL || head_thread->thread_status == STATUS_)
     {
-        
+        /* printf("HH1\n"); */
         /* Handle the situation when all threads except the last have been freed */
         if (state.head == state.tail)
         {
-            
             state.current_thread = state.head;
             return state.head;
         }
@@ -166,8 +165,13 @@ struct Thread *thread_candidate(void)
     }
     else
     {
+        /* printf("SDSDSD\n"); */
+        /* printf("H%d %d\n", state.current_thread->id, state.current_thread->thread_status); */
+
         /* Set Next Thread */
         next_thread = state.current_thread->linked_thread;
+
+        
 
         /* If the next thread is not terminated, return it */
         /* Else loop until we get the first thread which is not terminated and return it */
@@ -177,6 +181,7 @@ struct Thread *thread_candidate(void)
             if (next_thread->thread_status != STATUS_TERMINATED)
             {
                 state.current_thread = next_thread;
+                /* printf("F%d %d\n", next_thread->id, next_thread->thread_status); */
                 return next_thread;
             }
             else
@@ -197,14 +202,38 @@ void schedule(void)
 
     /* Get Candidate Thread From The List */
     struct Thread *thread = thread_candidate();
-    
+    /* printf("weqee %d\n", thread->id); */
+
     if (NULL == thread)
     {
         return;
     }
 
+   /*  if (thread->thread_status == STATUS_TERMINATED)
+    {
+        while (1)
+        {
+            if (thread->thread_status != STATUS_TERMINATED)
+            {
+                state.current_thread = thread;
+                break;
+            }
+            else
+            {
+                thread = thread->linked_thread;
+            }
+            if (thread == state.current_thread)
+            {
+                
+            }
+        }
+    }
+     */
+    
+    
+
     /* Update the current thread */
-    state.current_thread = thread;
+    /* state.current_thread = thread; */
     
     /* First Run */
     if (thread->thread_status == STATUS_)
@@ -215,44 +244,57 @@ void schedule(void)
         thread->thread_status = STATUS_RUNNING;
         
         thread->fnc(thread->arg);
-
+        
         /* The Thread has completed executing */
         thread->thread_status = STATUS_TERMINATED;
+        /* printf("SDSDSDFFF\n"); */
+        /* printf("%d %d\n", thread->id, thread->thread_status); */
+        
         /* Long Jump to scheduler_execute() */
-        longjmp(state.ctx, 2);
+        longjmp(state.ctx, 0);
     }
-    else
+
+    if (thread != NULL)
     {
-        /* Long Jump to scheduler_yield()*/
-        longjmp(thread->ctx, 1);
+        longjmp(state.current_thread->ctx, 0);
     }
 }
 
-void destroy(void)
-{
-
-    struct Thread *current_thread = state.current_thread;
-
+void destroy(void){
+    struct Thread * head_thread = state.head;
+    struct Thread * next_thread = head_thread;
     /* Make all pointer references NULL IFF we have reached the end of the thread list */
-    if (state.head == state.tail)
-    {
-        state.tail->linked_thread = NULL;
-        state.tail = NULL;
-        state.head = NULL;
-    }
+    
     /* Else, update the head of the thread list as we will deallocate the current thread */
-    else
-    {
-        state.head = current_thread->linked_thread;
-    }
-    state.current_thread = NULL;
-    FREE(current_thread->stack.memory_);
-    FREE(current_thread);
-    /* Long Jump to scheduler_execute() */
-    longjmp(state.ctx, 1);
-}
 
-void destroy2(void){
+        while (next_thread->thread_status == STATUS_TERMINATED  )
+        {
+            if (state.head == state.tail)
+            {
+                state.tail->linked_thread = NULL;
+                state.tail = NULL;
+                state.head = NULL;
+                next_thread = NULL;
+            }
+            else
+            {
+                next_thread = next_thread->linked_thread;
+                state.head = next_thread;
+            }
+            
+            state.current_thread = NULL;
+            FREE(head_thread->stack.memory_);
+            FREE(head_thread);
+
+            head_thread = next_thread;
+
+            if (next_thread == NULL)
+            {
+                break;
+            }
+            
+
+        }
     
 }
 
@@ -262,6 +304,7 @@ void destroy2(void){
 
 void scheduler_yield(void)
 {
+    alarm(0);
     if (setjmp(state.current_thread->ctx))
     {
         return;
@@ -270,22 +313,4 @@ void scheduler_yield(void)
     {
         longjmp(state.ctx, 1);
     }
-}
-
-void handler(int signum)
-{
-    signum++;
-    scheduler_yield();
-}
-
-void settimer(void)
-{
-    signal(SIGALRM, handler);
-    alarm(1);
-}
-
-void cleartimer(void)
-{
-    alarm(0);
-    signal(SIGALRM, SIG_DFL);
 }
