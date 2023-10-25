@@ -46,15 +46,16 @@ void scheduler_execute(void);
 /**
  * Called from within a user thread to yield the CPU to another user thread.
  */
-
 void scheduler_yield(void);
 
+/**
+ * Executes the thread
+ */
 void schedule(void);
 
+/**
+ * Frees all memory allocated to the threads
+*/
 void destroy(void);
-
-void settimer(void);
-
-void cleartimer(void);
 
 #endif /* _SCHEDULER_H_ */
