@@ -82,8 +82,7 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
 
     if (!thread)
     {
-        TRACE("scheduler_create: Thread :Memory Full");
-        return NULL;
+        TRACE("scheduler_create: Thread : Memory Full");
     }
     
 
@@ -101,7 +100,6 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
         TRACE("scheduler_create: Thread Stack :Memory Full");
         FREE(thread);
         thread = NULL;
-        return NULL;
     }
     
 
@@ -142,7 +140,7 @@ void scheduler_execute(void)
     /* Set Scheduler Jump Buffer */
     setjmp(state.ctx);
     /* Register Signal handler */
-    signal(SIGALRM, (void (*)(int))scheduler_yield);
+    signal(SIGALRM, (void (*)(int))scheduler_yield);   
     /* Call the Signal Handler after 1 second */
     alarm(1);
     /* Schedule Next Thread */
