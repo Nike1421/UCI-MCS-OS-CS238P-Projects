@@ -80,6 +80,13 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
     /* Allocate 1MB Memory to the thread */
     struct Thread *thread = malloc(1024 * 1024);
 
+    if (!thread)
+    {
+        TRACE("scheduler_create: Thread :Memory Full");
+        return NULL;
+    }
+    
+
     page_size_v = page_size();
 
     thread->thread_status = STATUS_;
@@ -88,6 +95,16 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
 
     /* Allocate Memory To Stack */
     thread->stack.memory_ = malloc(3 * page_size_v);
+
+    if (!thread->stack.memory_)
+    {
+        TRACE("scheduler_create: Thread Stack :Memory Full");
+        FREE(thread);
+        thread = NULL;
+        return NULL;
+    }
+    
+
     /* Page Align the memory */
     thread->stack.memory = memory_align(thread->stack.memory_, page_size_v);
     thread->linked_thread = NULL;
@@ -200,6 +217,7 @@ void schedule(void)
     /* When the thread is newly created */
     if (thread->thread_status == STATUS_)
     {
+        /* ADD COMMENT HERE SPECIFYING WHAT EXACTLY IT DOES */
         uint64_t rsp = (uint64_t)thread->stack.memory;
         __asm__ volatile("mov %[rs], %%rsp \n"
                          : [rs] "+r"(rsp)::);
@@ -261,7 +279,6 @@ void destroy(void)
 /**
  * Called from within a user thread to yield the CPU to another user thread.
  */
-
 void scheduler_yield(void)
 {
     /* Reset The Alarm */
