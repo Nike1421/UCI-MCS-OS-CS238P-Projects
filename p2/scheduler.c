@@ -217,7 +217,7 @@ void schedule(void)
     /* When the thread is newly created */
     if (thread->thread_status == STATUS_)
     {
-        /* ADD COMMENT HERE SPECIFYING WHAT EXACTLY IT DOES */
+        /* x86_64 assembly instruction to assign the top of the thread stack to the rsp register (stack pointer). */
         uint64_t rsp = (uint64_t)thread->stack.memory;
         __asm__ volatile("mov %[rs], %%rsp \n"
                          : [rs] "+r"(rsp)::);
