@@ -1,4 +1,4 @@
-/**
+/*  *//**
  * Tony Givargis
  * Copyright (C), 2023
  * University of California, Irvine
@@ -19,7 +19,7 @@ _thread_(void *arg)
 	name = (const char *)arg;
 	for (i=0; i<100; ++i) {
 		printf("%s %d\n", name, i);
-		us_sleep(30000);
+		us_sleep(20000);
 		/* scheduler_yield(); */
 	}
 }

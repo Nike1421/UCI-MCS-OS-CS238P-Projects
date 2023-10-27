@@ -161,7 +161,7 @@ struct Thread *thread_candidate(void)
     /* Enters the if block twice */
     /* Once when all threads have status STATUS_ */
     /* Second time when all threads are terminated and we free their memory */
-    if (state.current_thread == NULL || head_thread->thread_status == STATUS_)
+    if (state.current_thread == NULL)
     {
         /* Handle the situation when all threads except the last have been freed */
         if (state.head == state.tail)
@@ -232,7 +232,7 @@ void schedule(void)
     }
 
     /* Restore Thread Jump Buffer */
-    longjmp(state.current_thread->ctx, 0);
+    longjmp(state.current_thread->ctx, 1);
 }
 
 /**
