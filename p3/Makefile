@@ -2,7 +2,7 @@
 # Tony Givargis
 # Copyright (C), 2023
 # University of California, Irvine
-#
+#-Wall -Wextra -Werror -Wfatal-errors
 # CS 238P - Operating Systems
 # Makefile
 #

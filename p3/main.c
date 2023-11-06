@@ -10,6 +10,9 @@
 #include "avl.h"
 #include "term.h"
 #include "shell.h"
+#include <unistd.h>
+
+
 
 static int
 exists(struct avl *avl, const char *s)
@@ -160,6 +163,7 @@ shell_fnc(void *arg, const char *s)
 static void
 greetings(void)
 {
+	
 	term_bold();
 	term_color(TERM_COLOR_MAGENTA);
 	printf("\n"
@@ -173,6 +177,8 @@ greetings(void)
 	term_color(TERM_COLOR_GREEN);
 	printf("   Storage Class Memory Manager\n\n");
 	term_reset();
+	
+	
 }
 
 static void
@@ -194,6 +200,14 @@ main(int argc, char *argv[])
 	int nocolor = 0;
 	struct avl *avl;
 	int i;
+	/* int curr_break;
+
+	curr_break = sbrk(0);
+	printf("SBREAK LIMIT p : 0x%x\n", curr_break);
+	curr_break = sbrk(10);
+	curr_break = sbrk(0);
+	printf("SBREAK LIMIT p : 0x%x\n", curr_break); */
+	
 
 	for (i=1; i<argc; ++i) {
 		if (!strcmp(argv[i], "--truncate") && !truncate) {

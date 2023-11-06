@@ -9,6 +9,7 @@
 
 #ifndef _SCM_H_
 #define _SCM_H_
+#define MULTIPLIER 3
 
 #include "system.h"
 

@@ -9,6 +9,8 @@
 
 #include "system.h"
 #include "term.h"
+#include <unistd.h>
+
 
 static int nocolor;
 
