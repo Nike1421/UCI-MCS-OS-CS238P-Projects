@@ -19,7 +19,7 @@ struct avl
 		struct node
 		{
 			int depth;
-			uint64_t count;
+			uint64_t count;	
 			const char *item;
 			struct node *left;
 			struct node *right;
@@ -50,7 +50,6 @@ static struct node *
 rotate_right(struct node *node)
 {
 	struct node *root;
-
 	root = node->left;
 	node->left = root->right;
 	root->right = node;
@@ -237,6 +236,7 @@ static struct node *
 remove_node(struct avl *avl, struct node *root, const char *item, int flag)
 {
 	int d;
+	void *str_del;
 
 	if (root == NULL)
 	{
@@ -282,8 +282,11 @@ remove_node(struct avl *avl, struct node *root, const char *item, int flag)
 			{
 				struct node *temp = find_min(root->right);
 
-				root->item = temp->item;
+				str_del = (void *) root->item;
+				root->item = scm_strdup(avl->scm, temp->item);
 				root->count = temp->count;
+				scm_free(avl->scm, str_del);
+				temp->count = 1;
 
 				root->right = remove_node(avl, root->right, temp->item, 1);
 			}

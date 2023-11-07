@@ -17,7 +17,6 @@
 #include "scm.h"
 
 #define VIRT_ADDR 0x600000000000
-#define MULT 1
 
 /**
  * Uses:
@@ -31,21 +30,24 @@
  *   msync()
  */
 
-struct scm {
+struct scm
+{
     /* File Descriptor */
-    int fd; 
-    struct {
+    int fd;
+    struct
+    {
         size_t utilized; /* Utilized Bytes */
         size_t capacity; /* Available Bytes */
     } size;
     /* Memory Address of SCM in the Heap */
-    void *addr; 
+    void *addr;
 };
 
 /**
- * 
-*/
-struct scm *file_size(const char *pathname) {
+ *
+ */
+struct scm *file_size(const char *pathname)
+{
     struct stat st;
     int fd;
     struct scm *scm;
@@ -53,26 +55,31 @@ struct scm *file_size(const char *pathname) {
     assert(pathname);
 
     /* Allocate Some Memory To The SCM */
-    if (!(scm = malloc(sizeof(struct scm)))) {
+    if (!(scm = malloc(sizeof(struct scm))))
+    {
         return NULL;
     }
     memset(scm, 0, sizeof(struct scm));
 
     /* Open The File */
-    if ((fd = open(pathname, O_RDWR)) == -1) {
+    if ((fd = open(pathname, O_RDWR)) == -1)
+    {
         free(scm);
         TRACE("File Descriptor ERROR");
         return NULL;
     }
 
-    if (fstat(fd, &st) == -1) {
+    if (fstat(fd, &st) == -1)
+    {
         free(scm);
         close(fd);
         TRACE("File Descriptor fstat ERROR");
         return NULL;
     }
 
-    if (!S_ISREG(st.st_mode)) {
+    /* Check Regular File Or Not */
+    if (!S_ISREG(st.st_mode))
+    {
         free(scm);
         close(fd);
         TRACE("File Is Not Regular");
@@ -96,25 +103,30 @@ struct scm *file_size(const char *pathname) {
  * return: an opaque handle or NULL on error
  */
 
-struct scm *scm_open(const char *pathname, int truncate) {
+struct scm *scm_open(const char *pathname, int truncate)
+{
     /* Initialize SCM */
     struct scm *scm = file_size(pathname);
-    if (!scm) {
+    if (!scm)
+    {
+        free(scm);
         TRACE("SCM");
         return NULL;
     }
 
     /* Increment Memory Break */
-    if (sbrk(scm->size.capacity) == (void *) -1) {
+    /* if (sbrk(scm->size.capacity) == (void *)-1)
+    {
         close(scm->fd);
         free(scm);
         TRACE("sbrk error");
         return NULL;
-    }
+    } */
 
     /* Map The Input File To Virtual Memory */
-    if ((scm->addr = mmap((void *) VIRT_ADDR, scm->size.capacity, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED,
-                          scm->fd, 0)) == MAP_FAILED) {
+    if ((scm->addr = mmap((void *)VIRT_ADDR, scm->size.capacity, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED,
+                          scm->fd, 0)) == MAP_FAILED)
+    {
         close(scm->fd);
         free(scm);
         TRACE("mmap Error");
@@ -122,21 +134,25 @@ struct scm *scm_open(const char *pathname, int truncate) {
     }
 
     /* Truncate Flag Is Passed */
-    if (truncate) {
-        if (ftruncate(scm->fd, scm->size.capacity) == -1) {
+    if (truncate)
+    {
+        if (ftruncate(scm->fd, scm->size.capacity) == -1)
+        {
             close(scm->fd);
             free(scm);
             TRACE("Truncate Error");
             return NULL;
         }
         scm->size.utilized = 0;
-    } else {
+    }
+    else
+    {
         /* Get How Much Space Has Been Utilized By Reading The First size_t Bytes In The Mapped Region Of The File*/
-        scm->size.utilized = (size_t) *(size_t *) scm->addr;
+        scm->size.utilized = (size_t) * (size_t *)scm->addr;
         printf("SCM Utilization: %lu\n", scm->size.utilized);
     }
     /* Start storing data from address after struct */
-    scm->addr = (char *) scm->addr + sizeof(size_t);
+    scm->addr = (char *)scm->addr + sizeof(size_t);
     printf("SCM Now Located @: %p\n", scm->addr);
 
     return scm;
@@ -150,20 +166,22 @@ struct scm *scm_open(const char *pathname, int truncate) {
  * Note: scm may be NULL
  */
 
-void scm_close(struct scm *scm) {
-    if (scm) {
+void scm_close(struct scm *scm)
+{
+    if (scm)
+    {
         printf("SCM Located @: %p\n", scm->addr);
         printf("SCM Utilization: %lu\n", scm->size.utilized);
 
         /* Sync Any Modifications Present In Cache To The File */
-        msync((char *) VIRT_ADDR, scm->size.capacity, MS_SYNC);
+        msync((char *)VIRT_ADDR, scm->size.capacity, MS_SYNC);
 
         /* Unmap The File From The Virtual Memory */
-        munmap((char *) VIRT_ADDR, scm->size.capacity);
+        munmap((char *)VIRT_ADDR, scm->size.capacity);
 
         close(scm->fd);
         memset(scm, 0, sizeof(struct scm));
-}
+    }
     free(scm);
 }
 
@@ -175,30 +193,32 @@ void scm_close(struct scm *scm) {
  *
  * return: a pointer to the start of the allocated memory or NULL on error
  */
-void *scm_malloc(struct scm *scm, size_t n){
+void *scm_malloc(struct scm *scm, size_t n)
+{
     /* BASE Address From Where The Data Is Being Stored */
-    void *p = (char *) scm->addr + scm->size.utilized;
-    
+    void *p = (char *)scm->addr + scm->size.utilized;
+
     /* Memory Block Size */
     size_t size = sizeof(short) + sizeof(size_t) + n;
-    
+
     /* Condition To Check If All Memory Allocated Has Been Utilized */
     /* Ideally, We Should Allocate More Memory Here */
-    if (scm->size.utilized + size > scm->size.capacity) {
+    if (scm->size.utilized + size > scm->size.capacity)
+    {
         /* TODO: In The Very Far Future */
-            return NULL;
+        return NULL;
     }
 
     /* set the bit value to 1 */
-    *(short *) p = 1;
+    *(short *)p = 1;
     /* set size to size */
-    *(size_t *) ((char *) p + sizeof(short)) = size;
+    *(size_t *)((char *)p + sizeof(short)) = size;
     /* Increase Utilized Size */
     scm->size.utilized += size;
     /* Save How Much Space Has Been Utilized To Teh First size_t Bytes In The Mapped File  */
-    *(size_t *) ((char *) scm->addr - sizeof(size_t)) = scm->size.utilized;
+    *(size_t *)((char *)scm->addr - sizeof(size_t)) = scm->size.utilized;
     /* Memory BASE ADDR */
-    return (char *) p + sizeof(short) + sizeof(size_t);
+    return (char *)p + sizeof(short) + sizeof(size_t);
 }
 
 /**
@@ -210,10 +230,12 @@ void *scm_malloc(struct scm *scm, size_t n){
  * return: the base memory address of the duplicated C string or NULL on error
  */
 
-char *scm_strdup(struct scm *scm, const char *s) {
+char *scm_strdup(struct scm *scm, const char *s)
+{
     size_t n = strlen(s) + 1;
     char *p = scm_malloc(scm, n);
-    if (!p) {
+    if (!p)
+    {
         return NULL;
     }
     strcpy(p, s);
@@ -228,11 +250,16 @@ char *scm_strdup(struct scm *scm, const char *s) {
  * p  : a pointer to the start of a previously allocated memory
  */
 
-void scm_free(struct scm *scm, void *p) {
-    size_t size = *(size_t *) ((char *) p - sizeof(size_t));
-    *(short *) ((char *) p - sizeof(short) - sizeof(size_t)) = 0;
-    scm->size.utilized -= size;
-    *(size_t *) ((char *) scm->addr - sizeof(size_t)) = scm->size.utilized;
+void scm_free(struct scm *scm, void *p)
+{
+    /* Update The Size Utilized  */
+    scm->size.utilized -= *(size_t *)((char *)p - sizeof(size_t));
+
+    /* Changed the IsAvailable Bit To FREE */
+    *(short *)((char *)p - sizeof(short) - sizeof(size_t)) = 0;
+
+    /* Update The Utilized Size */
+    *(size_t *)((char *)scm->addr - sizeof(size_t)) = scm->size.utilized;
 }
 
 /**
@@ -243,7 +270,8 @@ void scm_free(struct scm *scm, void *p) {
  * return: the number of bytes utilized thus far
  */
 
-size_t scm_utilized(const struct scm *scm) {
+size_t scm_utilized(const struct scm *scm)
+{
     return scm->size.utilized;
 }
 
@@ -255,7 +283,8 @@ size_t scm_utilized(const struct scm *scm) {
  * return: the number of bytes available in total
  */
 
-size_t scm_capacity(const struct scm *scm) {
+size_t scm_capacity(const struct scm *scm)
+{
     return scm->size.capacity;
 }
 
@@ -269,8 +298,9 @@ size_t scm_capacity(const struct scm *scm) {
  * return: the base memory address within the SCM region
  */
 
-void *scm_mbase(struct scm *scm) {
+void *scm_mbase(struct scm *scm)
+{
     /* SCM BASE ADDR Is VIRT_ADDR */
     /* The Base Address Of The SCM Is The Address Of The Metadata */
-    return (char *) scm->addr + sizeof(short) + sizeof(size_t);
+    return (char *)scm->addr + sizeof(short) + sizeof(size_t);
 }
