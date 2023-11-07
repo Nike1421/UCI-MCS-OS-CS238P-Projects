@@ -136,7 +136,7 @@ struct scm *scm_open(const char *pathname, int truncate) {
         printf("SCM Utilization: %lu\n", scm->size.utilized);
     }
     /* Start storing data from address after struct */
-    scm->addr = (char *) scm->addr + sizeof(struct scm);
+    scm->addr = (char *) scm->addr + sizeof(size_t);
     printf("SCM Now Located @: %p\n", scm->addr);
 
     return scm;
@@ -175,7 +175,7 @@ void scm_close(struct scm *scm) {
  *
  * return: a pointer to the start of the allocated memory or NULL on error
  */
-
+void *scm_malloc(struct scm *scm, size_t n){
     /* BASE Address From Where The Data Is Being Stored */
     void *p = (char *) scm->addr + scm->size.utilized;
     
