@@ -216,7 +216,8 @@ char *scm_strdup(struct scm *scm, const char *s) {
     if (!p) {
         return NULL;
     }
-    memcpy(p, s, n);
+    strcpy(p, s);
+    /* memcpy(p, s, n); */
     return p;
 }
 
