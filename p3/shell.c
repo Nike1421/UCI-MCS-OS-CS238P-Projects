@@ -168,7 +168,7 @@ read_line(void)
 		else if ('\n' == k) {
 			break;
 		}
-		else if (isprint(k)) {
+		else if ((k)) {
 			if ((n + 1) < N) {
 				if (i < n) {
 					memmove(buf + i + 1,

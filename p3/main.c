@@ -158,9 +158,9 @@ shell_fnc(void *arg, const char *s)
 		{0, "info", info},
 		{0, "list", list},
 		{1, "load", load},
-		{1, "insert", insert},
-		{1, "remove", remove_word},
-		{1, "exists", exists}};
+		{1, "insert ", insert},
+		{1, "remove ", remove_word},
+		{1, "exists ", exists}};
 	struct avl *avl;
 	uint64_t i;
 
