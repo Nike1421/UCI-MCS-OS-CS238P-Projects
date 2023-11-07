@@ -174,72 +174,29 @@ void scm_close(struct scm *scm) {
  * return: a pointer to the start of the allocated memory or NULL on error
  */
 
-void *scm_malloc(struct scm *scm, size_t n)
-{
-    void * currPositionOfBreak;
-    size_t memory_need = MULTIPLIER * (n + sizeof(struct data_block));
-    /* void* break_pointer; */
-    /* Blocks x2 */
-    /* struct data_block *head = scm->head; */
-    /* struct data_block *ptr; */
-
-    /* break_pointer = sbrk(0); */
-    printf("%ld\n", scm->addr + memory_need - (char *)sbrk(0));
-
-    if (scm->head == NULL)
-    {
-        currPositionOfBreak = sbrk(0);
-        printf("SBREAK LIMIT p : %p\n", scm->addr);
-        /* if (sbrk(scm->addr + memory_need - (char *)sbrk(0)) == (void *)-1)
-        {
-            perror("FFF");
+    /* BASE Address From Where The Data Is Being Stored */
+    void *p = (char *) scm->addr + scm->size.utilized;
+    
+    /* Memory Block Size */
+    size_t size = sizeof(short) + sizeof(size_t) + n;
+    
+    /* Condition To Check If All Memory Allocated Has Been Utilized */
+    /* Ideally, We Should Allocate More Memory Here */
+    if (scm->size.utilized + size > scm->size.capacity) {
+        /* TODO: In The Very Far Future */
             return NULL;
-        } */
-
-        currPositionOfBreak = sbrk(0);
-        /* printf("SBREAK LIMIT p : %p\n", currPositionOfBreak); */
-        printf("BReak Pointer LIMIT p : %p\n", currPositionOfBreak);
-        /* break_pointer = scm->addr; */
-        printf("HI\n");
-
-        scm->head = currPositionOfBreak;
-        scm->head->block_size = memory_need - sizeof(struct data_block);
-        scm->head->is_free = 0;
-        scm->head->next = NULL;
-        scm->head->prev = NULL;
-
-        printf("%p\n", scm->addr);
-
-        if (MULTIPLIER > 1)
-        {
-            /* splitChunk(ptr, size); */
-        }
-        return scm->head;
     }
-    else
-    {
-        struct data_block *free_block = NULL;
-        free_block = findBlock(scm, n);
-        if (!free_block)
-        {
-            /* free_block = increaseAllocation(scm->last_visited, n);
-            if (!free_block)
-            {
-                return NULL;
-            }
-            return free_block->addr; */
-        }
 
-        else 
-        {
-            if (free_block->block_size > n) 
-            {
-                splitChunk(free_block, n);
-            }
-        }
-        /* pthread_mutex_unlock(&lock); */
-        return free_block->addr;
-    }
+    /* set the bit value to 1 */
+    *(short *) p = 1;
+    /* set size to size */
+    *(size_t *) ((char *) p + sizeof(short)) = size;
+    /* Increase Utilized Size */
+    scm->size.utilized += size;
+    /* Save How Much Space Has Been Utilized To Teh First size_t Bytes In The Mapped File  */
+    *(size_t *) ((char *) scm->addr - sizeof(size_t)) = scm->size.utilized;
+    /* Memory BASE ADDR */
+    return (char *) p + sizeof(short) + sizeof(size_t);
 }
 
 /**
@@ -268,7 +225,12 @@ char *scm_strdup(struct scm *scm, const char *s) {
  * p  : a pointer to the start of a previously allocated memory
  */
 
-/* void scm_free(struct scm *scm, void *p); */
+void scm_free(struct scm *scm, void *p) {
+    size_t size = *(size_t *) ((char *) p - sizeof(size_t));
+    *(short *) ((char *) p - sizeof(short) - sizeof(size_t)) = 0;
+    scm->size.utilized -= size;
+    *(size_t *) ((char *) scm->addr - sizeof(size_t)) = scm->size.utilized;
+}
 
 /**
  * Returns the number of SCM bytes utilized thus far.
