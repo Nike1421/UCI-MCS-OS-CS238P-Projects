@@ -269,8 +269,7 @@ size_t scm_capacity(const struct scm *scm) {
  */
 
 void *scm_mbase(struct scm *scm) {
-    /* the base address of the scm is VIRT_ADDR */
-    /* the base address of the scm is different from the original address because of the T and CRC */
-    /* the base address of the scm is the address of the metadata */
+    /* SCM BASE ADDR Is VIRT_ADDR */
+    /* The Base Address Of The SCM Is The Address Of The Metadata */
     return (char *) scm->addr + sizeof(short) + sizeof(size_t);
 }
