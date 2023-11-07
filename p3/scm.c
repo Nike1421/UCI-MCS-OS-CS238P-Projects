@@ -16,10 +16,10 @@
 #include <fcntl.h>
 #include "scm.h"
 
-uintptr_t VIRT_ADDR = 0x500000000000;
-char *brkPoint0 = NULL;
+#define VIRT_ADDR 0x600000000000
+
 /**
- * Needs:
+ * Uses:
  *   fstat()
  *   S_ISREG()
  *   open()
@@ -30,26 +30,60 @@ char *brkPoint0 = NULL;
  *   msync()
  */
 
-/* research the above Needed API and design accordingly */
-struct data_block
-{
-    struct data_block *next;
-    struct data_block *prev;
-    size_t block_size;
-    int is_free;
-    char *addr;
+struct scm {
+    /* File Descriptor */
+    int fd; 
+    struct {
+        size_t utilized; /* Utilized Bytes */
+        size_t capacity; /* Available Bytes */
+    } size;
+    /* Memory Address of SCM in the Heap */
+    void *addr; 
 };
 
-struct scm
-{
+/**
+ * 
+*/
+struct scm *file_size(const char *pathname) {
+    struct stat st;
     int fd;
-    struct data_block *head;
-    struct data_block *last_visited;
-    size_t size_available;
-    size_t size_utilized;
-    size_t size_total;
-    char *addr;
-};
+    struct scm *scm;
+
+    assert(pathname);
+
+    /* Allocate Some Memory To The SCM */
+    if (!(scm = malloc(sizeof(struct scm)))) {
+        return NULL;
+    }
+    memset(scm, 0, sizeof(struct scm));
+
+    /* Open The File */
+    if ((fd = open(pathname, O_RDWR)) == -1) {
+        free(scm);
+        TRACE("File Descriptor ERROR");
+        return NULL;
+    }
+
+    if (fstat(fd, &st) == -1) {
+        free(scm);
+        close(fd);
+        TRACE("File Descriptor fstat ERROR");
+        return NULL;
+    }
+
+    if (!S_ISREG(st.st_mode)) {
+        free(scm);
+        close(fd);
+        TRACE("File Is Not Regular");
+        return NULL;
+    }
+
+    scm->fd = fd;
+    scm->size.utilized = 0;
+    scm->size.capacity = st.st_size;
+
+    return scm;
+}
 
 /**
  * Initializes an SCM region using the file specified in pathname as the
@@ -61,41 +95,50 @@ struct scm
  * return: an opaque handle or NULL on error
  */
 
-struct scm *scm_open(const char *pathname, int truncate)
-{
-    struct scm* storage = malloc(sizeof(struct scm));
-    int fd = open(pathname, O_RDWR, 0666);
-    struct stat path_stat;
-    
-
-    if (!fd)
-    {
-        perror("Uble to open file\n");
+struct scm *scm_open(const char *pathname, int truncate) {
+    /* Initialize SCM */
+    struct scm *scm = file_size(pathname);
+    if (!scm) {
+        TRACE("SCM");
+        return NULL;
     }
 
-    fstat(fd, &path_stat);
-
-    if (!S_ISREG(path_stat.st_mode))
-    {
+    /* Increment Memory Break */
+    if (sbrk(scm->size.capacity) == (void *) -1) {
+        close(scm->fd);
+        free(scm);
+        TRACE("sbrk error");
+        return NULL;
     }
 
-    if (!truncate)
-    {
-        /* code */
+    /* Map the input file to Virtual Memory */
+    if ((scm->addr = mmap((void *) VIRT_ADDR, scm->size.capacity, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED,
+                          scm->fd, 0)) == MAP_FAILED) {
+        close(scm->fd);
+        free(scm);
+        TRACE("mmap error");
+        return NULL;
     }
 
-    printf("Its a valid file\n");
-    storage->fd = fd;
-    storage->size_available = path_stat.st_size;
-
-    if ((storage->addr = mmap((void *) VIRT_ADDR, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
-    {
-        perror("mmap");
-        exit(1);
+    /* Truncate Flag Is Passed */
+    if (truncate) {
+        if (ftruncate(scm->fd, scm->size.capacity) == -1) {
+            close(scm->fd);
+            free(scm);
+            TRACE("truncate error");
+            return NULL;
+        }
+        scm->size.utilized = 0;
+    } else {
+        /* get the value of the utilized memory from the first sizeof(size_t) bytes (size_t) *(size_t *) scm->addr;*/
+        scm->size.utilized = (size_t) *(size_t *) scm->addr;
+        printf("scm->size.utilized: %lu\n", scm->size.utilized);
     }
-    printf("SDSD: %p\n", storage->addr);
+    /* Start storing data from address after struct */
+    scm->addr = (char *) scm->addr + sizeof(struct scm);
+    printf("scm->addr after: %p\n", scm->addr);
 
-    return storage;
+    return scm;
 }
 
 /**
