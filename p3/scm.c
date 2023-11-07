@@ -322,9 +322,8 @@ char *scm_strdup(struct scm *scm, const char *s)
  * return: the number of bytes utilized thus far
  */
 
-size_t scm_utilized(const struct scm *scm)
-{
-    return scm->size_utilized;
+size_t scm_utilized(const struct scm *scm) {
+    return scm->size.utilized;
 }
 
 /**
@@ -335,9 +334,8 @@ size_t scm_utilized(const struct scm *scm)
  * return: the number of bytes available in total
  */
 
-size_t scm_capacity(const struct scm *scm)
-{
-    return scm->size_available;
+size_t scm_capacity(const struct scm *scm) {
+    return scm->size.capacity;
 }
 
 /**
@@ -350,7 +348,9 @@ size_t scm_capacity(const struct scm *scm)
  * return: the base memory address within the SCM region
  */
 
-void *scm_mbase(struct scm *scm)
-{
-    return scm->addr;
+void *scm_mbase(struct scm *scm) {
+    /* the base address of the scm is VIRT_ADDR */
+    /* the base address of the scm is different from the original address because of the T and CRC */
+    /* the base address of the scm is the address of the metadata */
+    return (char *) scm->addr + sizeof(short) + sizeof(size_t);
 }
