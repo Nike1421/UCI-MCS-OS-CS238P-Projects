@@ -234,7 +234,7 @@ find_min(struct node *node)
 }
 
 static struct node *
-remove_node(struct avl *avl, struct node *root, const char *item)
+remove_node(struct avl *avl, struct node *root, const char *item, int flag)
 {
 	int d;
 
@@ -247,15 +247,15 @@ remove_node(struct avl *avl, struct node *root, const char *item)
 
 	if (d < 0)
 	{
-		root->left = remove_node(avl, root->left, item);
+		root->left = remove_node(avl, root->left, item, 0);
 	}
 	else if (d > 0)
 	{
-		root->right = remove_node(avl, root->right, item);
+		root->right = remove_node(avl, root->right, item, 0);
 	}
 	else
 	{
-		if (root->count > 1)
+		if (root->count > 1 && !flag)
 		{
 			root->count--;
 		}
@@ -285,7 +285,7 @@ remove_node(struct avl *avl, struct node *root, const char *item)
 				root->item = temp->item;
 				root->count = temp->count;
 
-				root->right = remove_node(avl, root->right, temp->item);
+				root->right = remove_node(avl, root->right, temp->item, 1);
 			}
 		}
 	}
@@ -334,7 +334,7 @@ int avl_remove(struct avl *avl, const char *item)
 	}
 	else
 	{
-		root = remove_node(avl, avl->state->root, item);
+		root = remove_node(avl, avl->state->root, item, 0);
 		avl->state->items--;
 	}
 
