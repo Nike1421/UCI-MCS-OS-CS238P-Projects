@@ -17,6 +17,7 @@
 #include "scm.h"
 
 #define VIRT_ADDR 0x600000000000
+#define MULT 1
 
 /**
  * Uses:
@@ -111,12 +112,12 @@ struct scm *scm_open(const char *pathname, int truncate) {
         return NULL;
     }
 
-    /* Map the input file to Virtual Memory */
+    /* Map The Input File To Virtual Memory */
     if ((scm->addr = mmap((void *) VIRT_ADDR, scm->size.capacity, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED,
                           scm->fd, 0)) == MAP_FAILED) {
         close(scm->fd);
         free(scm);
-        TRACE("mmap error");
+        TRACE("mmap Error");
         return NULL;
     }
 
@@ -125,18 +126,18 @@ struct scm *scm_open(const char *pathname, int truncate) {
         if (ftruncate(scm->fd, scm->size.capacity) == -1) {
             close(scm->fd);
             free(scm);
-            TRACE("truncate error");
+            TRACE("Truncate Error");
             return NULL;
         }
         scm->size.utilized = 0;
     } else {
-        /* get the value of the utilized memory from the first sizeof(size_t) bytes (size_t) *(size_t *) scm->addr;*/
+        /* Get How Much Space Has Been Utilized By Reading The First size_t Bytes In The Mapped Region Of The File*/
         scm->size.utilized = (size_t) *(size_t *) scm->addr;
-        printf("scm->size.utilized: %lu\n", scm->size.utilized);
+        printf("SCM Utilization: %lu\n", scm->size.utilized);
     }
     /* Start storing data from address after struct */
     scm->addr = (char *) scm->addr + sizeof(struct scm);
-    printf("scm->addr after: %p\n", scm->addr);
+    printf("SCM Now Located @: %p\n", scm->addr);
 
     return scm;
 }
@@ -149,62 +150,19 @@ struct scm *scm_open(const char *pathname, int truncate) {
  * Note: scm may be NULL
  */
 
-void scm_close(struct scm *scm)
-{
-    if (scm)
-    {
+void scm_close(struct scm *scm) {
+    if (scm) {
+        printf("SCM Located @: %p\n", scm->addr);
+        printf("SCM Utilization: %lu\n", scm->size.utilized);
+
+        /* Sync Any Modifications Present In Cache To The File */
+        msync((char *) VIRT_ADDR, scm->size.capacity, MS_SYNC);
+
+        /* Unmap The File From The Virtual Memory */
+        munmap((char *) VIRT_ADDR, scm->size.capacity);
+
         close(scm->fd);
-        free(scm);
-    }
-}
-
-/* findChunk: search for the first chunk that fits (size equal or more) the request
-              of the user.
-     chunkStatus *headptr: pointer to the first block of memory in the heap
-     unsigned int size: size requested by the user
-     retval: a poiter to the block which fits the request
-         or NULL, in case there is no such block in the list
-*/
-struct data_block *findBlock(struct scm* scm, size_t size)
-{
-    struct data_block *ptr = scm->head;
-
-    while (ptr != NULL)
-    {
-        if (ptr->block_size >= (size + sizeof(struct data_block)) && ptr->is_free == 1)
-        {
-            return ptr;
-        }
-        scm->last_visited = ptr;
-        ptr = ptr->next;
-    }
-    return ptr;
-}
-
-/* splitChunk: split one big block into two. The first will have the size requested by the user.
-           the second will have the remainder.
-     chunkStatus* ptr: pointer to the block of memory which is going to be splitted.
-     unsigned int size: size requested by the user
-     retval: void, the function modifies the list
-*/
-void splitChunk(struct data_block *ptr, size_t size)
-{
-    struct data_block* newChunk = ptr;
-
-    newChunk->addr = ptr->addr + size;
-    newChunk->block_size = ptr->block_size - size - sizeof(struct data_block);
-    newChunk->is_free = 1;
-    newChunk->next = ptr->next;
-    newChunk->prev = ptr;
-
-    if ((newChunk->next) != NULL)
-    {
-        (newChunk->next)->prev = newChunk;
-    }
-
-    ptr->block_size = size;
-    ptr->is_free = 0;
-    ptr->next = newChunk;
+        memset(scm, 0, sizeof(struct scm));
 }
 
 /**
