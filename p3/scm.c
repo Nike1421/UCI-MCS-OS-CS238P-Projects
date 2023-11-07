@@ -293,16 +293,14 @@ void *scm_malloc(struct scm *scm, size_t n)
  * return: the base memory address of the duplicated C string or NULL on error
  */
 
-char *scm_strdup(struct scm *scm, const char *s)
-{
+char *scm_strdup(struct scm *scm, const char *s) {
     size_t n = strlen(s) + 1;
-    char *addr = scm_malloc(scm, n);
-    if (addr == NULL)
-    {
+    char *p = scm_malloc(scm, n);
+    if (!p) {
         return NULL;
     }
-    memcpy(addr, s, n);
-    return addr;
+    memcpy(p, s, n);
+    return p;
 }
 
 /**
