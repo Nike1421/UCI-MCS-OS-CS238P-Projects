@@ -164,6 +164,8 @@ void scm_close(struct scm *scm) {
         close(scm->fd);
         memset(scm, 0, sizeof(struct scm));
 }
+    free(scm);
+}
 
 /**
  * Analogous to the standard C malloc function, but using SCM region.
