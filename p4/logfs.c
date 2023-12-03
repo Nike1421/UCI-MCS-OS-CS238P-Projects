@@ -99,6 +99,25 @@ struct logfs
   /* Read Cache */
   struct READ_CACHE_BLOCK *read_cache[RCACHE_BLOCKS];
 };
+int flush_to_disk(struct logfs *logfs)
+{
+  int distance_to_move_head;
+
+  pthread_mutex_lock(&logfs->mutex);
+  distance_to_move_head = logfs->block_size - (logfs->head % logfs->block_size);
+  logfs->head = logfs->head + distance_to_move_head;
+  logfs->write_buffer_filled = logfs->write_buffer_filled + distance_to_move_head;
+
+  pthread_cond_signal(&logfs->item_avail);
+  pthread_cond_wait(&logfs->flush, &logfs->mutex);
+
+  logfs->head = logfs->head - distance_to_move_head;
+  logfs->tail = logfs->tail == 0 ? logfs->head - (logfs->head % logfs->block_size) : logfs->tail - logfs->block_size;
+  logfs->write_buffer_filled = logfs->head % logfs->block_size;
+  logfs->file_offset = logfs->file_offset - logfs->block_size;
+
+  pthread_mutex_unlock(&logfs->mutex);
+  return 0;
 }
 
 /**
@@ -175,13 +194,32 @@ struct logfs *logfs_open(const char *pathname)
  * Note: logfs may be NULL.
  */
 
-void logfs_close(struct logfs *logfs){
-    if (logfs)
-    {
-        device_close(logfs->block_device);
-        /* There Should Be Something Here Definitely */
-        memset(logfs, 0, sizeof(struct logfs));
-    }
+void logfs_close(struct logfs *logfs)
+{
+  int i;
+
+  /* Flush All Current Contents Of Buffer To Disk */
+  flush_to_disk(logfs);
+
+  /* Exit Worker Thread */
+  pthread_mutex_lock(&logfs->mutex);
+  logfs->exit_worker_thread = 1;
+  pthread_mutex_unlock(&logfs->mutex);
+  pthread_cond_signal(&logfs->item_avail);
+  pthread_join(logfs->worker_thread, NULL);
+
+  /* Free All Read Cache Blocks */
+  for (i = 0; i < RCACHE_BLOCKS; ++i)
+  {
+    FREE(logfs->read_cache[i]->block_);
+    FREE(logfs->read_cache[i]);
+  }
+
+  /* Free Write Buffer */
+  FREE(logfs->write_buffer_);
+
+  /* Close Block Device */
+  device_close(logfs->device);
     FREE(logfs);
 }
 
