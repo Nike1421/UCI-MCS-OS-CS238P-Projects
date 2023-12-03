@@ -253,4 +253,24 @@ int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len){
  * return: 0 on success, otherwise error
  */
 
-int logfs_append(struct logfs *logfs, const void *buf, uint64_t len);
+int logfs_append(struct logfs *logfs, const void *buf, uint64_t len)
+{
+  uint64_t len_;
+
+  len_ = len;
+  pthread_mutex_lock(&logfs->mutex);
+  while (len_ > 0)
+  {
+    while (logfs->write_buffer_size <= logfs->write_buffer_filled)
+    {
+      pthread_cond_wait(&logfs->space_avail, &logfs->mutex);
+    }
+    logfs->write_buffer_filled++;
+    memcpy(logfs->write_buffer + logfs->head, (char *)buf + (len - len_), 1);
+    len_--;
+    logfs->head = (logfs->head + 1) % (logfs->write_buffer_size);
+    pthread_cond_signal(&logfs->item_avail);
+  }
+  pthread_mutex_unlock(&logfs->mutex);
+  return 0;
+}
