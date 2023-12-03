@@ -65,11 +65,40 @@
 
 /* research the above Needed API and design accordingly */
 
+struct READ_CACHE_BLOCK
+{
+  int valid;
+  int block_id;
+  char *block;
+  char *block_;
+};
+
 struct logfs
 {
-    struct device *block_device;  
-    void *write_buf[WCACHE_BLOCKS];
-    void *read_buf[RCACHE_BLOCKS];
+  /* Block Device */
+  struct device *device;
+  int file_offset;
+  int block_size;
+
+  /* Write Buffer */
+  int head;
+  int tail;
+  char *write_buffer;
+  char *write_buffer_;
+  int write_buffer_size;
+  int write_buffer_filled;
+
+  /* Worker Thread */
+  pthread_mutex_t mutex;
+  pthread_cond_t space_avail;
+  pthread_cond_t item_avail;
+  pthread_cond_t flush;
+  pthread_t worker_thread;
+  int exit_worker_thread;
+
+  /* Read Cache */
+  struct READ_CACHE_BLOCK *read_cache[RCACHE_BLOCKS];
+};
 }
 
 /**
