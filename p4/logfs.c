@@ -150,13 +150,13 @@ int flush_to_disk(struct logfs *logfs)
 struct logfs *logfs_open(const char *pathname)
 {
   int i;
-    struct logfs *logfs;
+  struct logfs *logfs;
 
   if (!(logfs = (struct logfs *)malloc(sizeof(struct logfs))))
-    {
-        TRACE("out of memory");
-        return NULL;
-    }
+  {
+    TRACE("out of memory");
+    return NULL;
+  }
   if (!(logfs->device = device_open(pathname)))
   {
     TRACE("unable to open device");
@@ -200,9 +200,9 @@ struct logfs *logfs_open(const char *pathname)
   if (pthread_create(&logfs->worker_thread, NULL, &write_to_disk, logfs))
   {
     TRACE("Error in pthread_create");
-        return NULL;
-    }
-    return logfs;
+    return NULL;
+  }
+  return logfs;
 }
 
 /**
@@ -239,7 +239,7 @@ void logfs_close(struct logfs *logfs)
 
   /* Close Block Device */
   device_close(logfs->device);
-    FREE(logfs);
+  FREE(logfs);
 }
 
 /**
@@ -297,8 +297,8 @@ int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len)
     read_buff_idx = block_id % RCACHE_BLOCKS;
     read_start_off = 0;
     len_to_read = MIN((size_t)logfs->block_size, len - read_till_now);
-    }
-    return 0;
+  }
+  return 0;
 }
 
 /**
