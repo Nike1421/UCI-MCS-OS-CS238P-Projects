@@ -2,9 +2,11 @@
 
 int main(int argc, char *argv[])
 {
+    time_t secs = 20;
+    time_t startTime = time(NULL);
     UNUSED(argc);
     UNUSED(argv);
-    for (;;)
+    while (time(NULL) - startTime < secs)
     {
         /* code */
     }
