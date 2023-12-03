@@ -20,15 +20,17 @@ int main(int argc, char *argv[])
     UNUSED(argc);
     UNUSED(argv);
     int *p;
+    int inc;
     long i = 0;
-    while (i < 10000000)
+    while (i < 30000)
     {
-        int inc = 1024 * 1024 * sizeof(char);
+        inc = 1024 * 1024 * sizeof(char);
         p = (int *) calloc(1, inc);
-        us_sleep(5000);
+        us_sleep(500);
         i++;
     }
     FREE(p);
+    /* TODO: Fix Mem Leak */
     /* us_sleep(20000000); */
     /* sleep(20); */
     /* free(blocks); */
