@@ -109,20 +109,59 @@ struct logfs
  *
  * return: an opaque handle or NULL on error
  */
-
-struct logfs *
-logfs_open(const char *pathname){
+struct logfs *logfs_open(const char *pathname)
+{
+  int i;
     struct logfs *logfs;
-    if (!logfs = malloc(sizeof(struct logfs)))
+
+  if (!(logfs = (struct logfs *)malloc(sizeof(struct logfs))))
     {
         TRACE("out of memory");
         return NULL;
     }
-    memset(logfs, 0, sizeof (struct logfs));
-    if (!logfs->block_device = device_open(pathname))
-    {
-        logfs_close(logfs);
-        TRACE(0);
+  if (!(logfs->device = device_open(pathname)))
+  {
+    TRACE("unable to open device");
+    return NULL;
+  }
+
+  /* Set LogFS Block Size As Per Device Block Size */
+  logfs->block_size = device_block(logfs->device);
+
+  /* Initialize Write Buffer */
+  logfs->write_buffer_size = WCACHE_BLOCKS * logfs->block_size;
+  logfs->write_buffer_ = (char *)malloc(logfs->write_buffer_size + logfs->block_size);
+  logfs->write_buffer = (char *)memory_align(logfs->write_buffer_, logfs->block_size);
+  memset(logfs->write_buffer, 0, logfs->write_buffer_size);
+
+  logfs->head = 0;
+  logfs->tail = 0;
+  logfs->write_buffer_filled = 0;
+  logfs->exit_worker_thread = 0;
+  logfs->file_offset = 0;
+
+  /* Initialize Read Cache */
+  for (i = 0; i < RCACHE_BLOCKS; ++i)
+  {
+    logfs->read_cache[i] = (struct READ_CACHE_BLOCK *)malloc(sizeof(struct READ_CACHE_BLOCK));
+    logfs->read_cache[i]->block_ = (char *)malloc(2 * logfs->block_size);
+    logfs->read_cache[i]->block = (char *)memory_align(logfs->read_cache[i]->block_, logfs->block_size);
+    logfs->read_cache[i]->block_id = -1;
+    logfs->read_cache[i]->valid = 0;
+  }
+
+  /* Initialize Mutexes and Condition Variables */
+  if (pthread_mutex_init(&logfs->mutex, NULL) ||
+      pthread_cond_init(&logfs->space_avail, NULL) ||
+      pthread_cond_init(&logfs->item_avail, NULL) ||
+      pthread_cond_init(&logfs->flush, NULL))
+  {
+    TRACE("Error in mutex and cond init");
+    return NULL;
+  }
+  if (pthread_create(&logfs->worker_thread, NULL, &write_to_disk, logfs))
+  {
+    TRACE("Error in pthread_create");
         return NULL;
     }
     return logfs;
