@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
         printf("Memory Utilization: %.2f%%\n", memory_util());
         network_packet_util();
         uptime_util();
-        us_sleep(500000);
+        us_sleep(750000);
     }
     return 0;
 }
