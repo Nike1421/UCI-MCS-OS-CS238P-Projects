@@ -28,41 +28,6 @@
  *   pthread_cond_signal()
  */
 
-/*
-	Key Value Store instead of FIle Systems
-	put(k,v)
-	v=get(k)	Basic API's
-	del(k)
-	lsblk -> Identify all the disk and devices
-	1) We need open, close, read, write, build logfs.c
-	read(address, buffer, offset, length)
-	read(address, buffer, offset, length)
-		buffer is the location where I would like to read the data into
-		offset - start reading data from offset, This should be block aligned, just like memory aligned, Always start from a multiple of block size
-		length - The number of bytes we need to read, This neeeds to be in multiple of block size
-		logfs always appends
-		reads can be from anywhere to any length
-	kvraw -> works on top of logfs, logfs just writes one buffer, kvraw, writes 2 buffers for key and value
-		KVRAW Object - | metadata +| key +| value |  --> Meta contains size of key, size of value
-		To update an existing key, create a new KVRAW Object and link it to the previous one [Reverse Linked List, FOr version history]
-	Index -> when we get a key, we hash it and store the most recent location of it [HASHTABLE], stored in memory
-	Create an iterative fn to write one block at a time if the required length is greater than a block
-	Keep one page open, and keep appending to the end of it
-
-	Create a Linked List, with 2 pointers, Head and Tail. Head is where we append the new arriving objects, tail is where the worker will take a block, write it to the disk and update the tail pointer to the next block
-	Create a write buffer, that is more than 1 block, keep writing to this buffer and as soon as a block is written use threads to commit it to the disk
-	Consumer Producer Problem in Concurrent Solutions
-	Maintain a buffer size to show how much data we have in the queue,, and check if that is buff_size%block size > 1 == Write to disk
-	Thread -> Wait until data becomes available, do not specify a time to wait for
-	Use pthread condition variables
-	Data at any point of time, can be in Cache, Write Buffer, and Disk
-	To read-> Commit everything to disk before doing anything, so that we dont have to read anything from write buffer
-	When writing a block to disk, fill the rest of the block with 0
-	https://stackoverflow.com/questions/20772476/when-to-use-pthread-condition-variables
-
-	For reading, Set aside a cache. If write buffer is 1mb, read buffer cna be 32mb
-*/
-
 /* research the above Needed API and design accordingly */
 
 struct READ_CACHE_BLOCK
@@ -99,6 +64,60 @@ struct logfs
   /* Read Cache */
   struct READ_CACHE_BLOCK *read_cache[RCACHE_BLOCKS];
 };
+
+void *write_to_disk(void *args)
+{
+  int block_id;
+  int read_cache_idx;
+  struct logfs *logfs = (struct logfs *)args;
+
+  /* Lock The Mutex */
+  pthread_mutex_lock(&logfs->mutex);
+
+  /* Execute Until Forced To Exit */
+  while (!logfs->exit_worker_thread)
+  {
+    while (logfs->write_buffer_filled < logfs->block_size)
+    {
+      /* Unlock Mutex And Exit Thread */
+      if (logfs->exit_worker_thread)
+      {
+        pthread_mutex_unlock(&logfs->mutex);
+        pthread_exit(NULL);
+      }
+
+      /* Wait For Signal */
+      pthread_cond_wait(&logfs->item_avail, &logfs->mutex);
+    }
+
+    /* Get Block ID Of Block Being Currently Written To */
+    block_id = logfs->file_offset / logfs->block_size;
+    read_cache_idx = block_id % RCACHE_BLOCKS;
+
+    if (logfs->read_cache[read_cache_idx]->block_id == block_id)
+    {
+      logfs->read_cache[read_cache_idx]->valid = 0;
+    }
+
+    /* Write To Disk */
+    if (device_write(logfs->device, logfs->write_buffer + logfs->tail, logfs->file_offset, logfs->block_size))
+    {
+      TRACE("Error in device_write\n");
+      pthread_exit(NULL);
+    }
+
+    /* Update Write Buffer Variables */
+    logfs->tail = (logfs->tail + logfs->block_size) % logfs->write_buffer_size;
+    logfs->write_buffer_filled = logfs->write_buffer_filled - logfs->block_size;
+    logfs->file_offset = logfs->file_offset + logfs->block_size;
+    if (logfs->head == logfs->tail || (logfs->tail == 0 && logfs->head == logfs->write_buffer_size))
+    {
+      pthread_cond_signal(&logfs->flush);
+    }
+  }
+  pthread_exit(NULL);
+}
+
 int flush_to_disk(struct logfs *logfs)
 {
   int distance_to_move_head;
@@ -234,11 +253,50 @@ void logfs_close(struct logfs *logfs)
  * return: 0 on success, otherwise error
  */
 
-int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len){
-    if (device_read(logfs->block_device, buf, off, len))
+int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len)
+{
+  int block_id;
+  int read_buff_idx;
+  int read_start_off;
+  int len_to_read;
+  size_t read_till_now = 0;
+
+  /* Flush Buffer To Disk */
+  flush_to_disk(logfs);
+
+  block_id = off / logfs->block_size;
+  read_buff_idx = block_id % RCACHE_BLOCKS;
+  read_start_off = off % logfs->block_size;
+  len_to_read = MIN(len, (size_t)logfs->block_size - read_start_off);
+
+  while (read_till_now < len)
+  {
+    /* Read From Cache */
+    if (logfs->read_cache[read_buff_idx] != NULL &&
+        logfs->read_cache[read_buff_idx]->valid &&
+        logfs->read_cache[read_buff_idx]->block_id == block_id)
     {
-        TRACE(0);
+      memcpy((char *)buf + read_till_now, logfs->read_cache[read_buff_idx]->block + read_start_off, len_to_read);
+    }
+    /* Read From Disk */
+    else
+    {
+      if ((device_read(logfs->device, logfs->read_cache[read_buff_idx]->block, block_id * logfs->block_size, logfs->block_size)))
+      {
+        TRACE("Error while calling device_read");
         return -1;
+      }
+      logfs->read_cache[read_buff_idx]->valid = 1;
+      logfs->read_cache[read_buff_idx]->block_id = block_id;
+      memcpy((char *)buf + read_till_now, logfs->read_cache[read_buff_idx]->block + read_start_off, len_to_read);
+    }
+
+    /* Update Block Parameters */
+    read_till_now += len_to_read;
+    block_id++;
+    read_buff_idx = block_id % RCACHE_BLOCKS;
+    read_start_off = 0;
+    len_to_read = MIN((size_t)logfs->block_size, len - read_till_now);
     }
     return 0;
 }
