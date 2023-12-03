@@ -112,7 +112,7 @@ double memory_util()
 
     if (mem_total > 0)
     {
-        mem_usage = 100 - ((mem_total - mem_free) / (double)mem_total * 100.0);
+        mem_usage = (mem_total - mem_free) / (double)mem_total * 100.0;
     }
 
     return mem_usage;
