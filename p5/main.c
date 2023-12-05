@@ -21,7 +21,7 @@ _signal_(int signum)
     done = 1;
 }
 
-double cpu_util(const char *s)
+double cpu_util(const char *s)  
 {
     static unsigned sum_, vector_[7];
     unsigned sum, vector[7];
@@ -183,14 +183,14 @@ void disk_util()
 
     while (fgets(line, sizeof(line), file) != NULL)
     {
-        sscanf(line, "%*u %*u %s %u %*u %*u %u %*u %*u %*u %*u",
+        sscanf(line, "%*u %*u %s %u %*u %*u %*u %u %*u %*u %*u",
                dev_name, &reads, &writes);
 
-        reads = 512 * reads;
-        writes = 512 * writes;
-        if (strcmp(dev_name, "sdc") == 0)
+        /* reads = 512 * reads;
+        writes = 512 * writes; */
+        if (strcmp(dev_name, "loop0") == 0)
         {
-            printf("----------------Disk Stats---------------\n");
+            printf("-----------------Disk Stats----------------\n");
             printf("Reads: %u | Writes: %u\n", reads, writes);
             fflush(stdout);
             fclose(file);
