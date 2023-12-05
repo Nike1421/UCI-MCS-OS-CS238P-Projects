@@ -183,7 +183,7 @@ void disk_util()
 
     while (fgets(line, sizeof(line), file) != NULL)
     {
-        sscanf(line, "%*u %*u %s %u %*u %*u %*u %u %*u %*u %*u",
+        sscanf(line, "%*u %*u %s %*u %*u %u %*u %u %*u %*u %*u",
                dev_name, &reads, &writes);
 
         /* reads = 512 * reads;
