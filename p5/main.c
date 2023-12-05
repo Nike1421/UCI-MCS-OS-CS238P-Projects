@@ -87,7 +87,7 @@ double memory_util()
 {
     char line[1024];
     FILE *file;
-    unsigned long mem_total = 0, mem_free = 0;
+    unsigned long mem_total = 0, mem_free = 0, mem_buffer = 0, mem_cache = 0;
     double mem_usage = 0.0;
 
     if (!(file = fopen(PROC_MEMINFO, "r")))
@@ -107,6 +107,14 @@ double memory_util()
         {
             mem_free = value;
         }
+        else if (sscanf(line, "Buffers: %lu kB", &value) == 1)
+        {
+            mem_buffer = value;
+        }
+        else if (sscanf(line, "Cached: %lu kB", &value) == 1)
+        {
+            mem_cache = value;
+        }
     }
 
     fclose(file);
@@ -115,6 +123,15 @@ double memory_util()
     {
         mem_usage = (mem_total - mem_free) / (double)mem_total * 100.0;
     }
+
+    /* 
+    
+    if (mem_total > 0)
+    {
+        mem_usage = (mem_total - (mem_free + mem_buffer + mem_cache)) / (double)mem_total * 100.0;
+    }
+    
+     */
 
     return mem_usage;
 }
