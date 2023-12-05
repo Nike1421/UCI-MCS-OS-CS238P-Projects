@@ -1,4 +1,4 @@
-#include "../system.h"
+#include "system.h"
 
 #define BLOCKS 2048
 #define BLOCK_SIZE 4096
