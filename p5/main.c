@@ -7,6 +7,7 @@
 #define PROC_NET "/proc/net/dev"
 #define PROC_STAT "/proc/stat"
 #define PROC_UPTIME "/proc/uptime"
+#define PROC_DEVICE "/proc/diskstats"
 
 static volatile int done;
 
@@ -118,13 +119,14 @@ double memory_util()
     return mem_usage;
 }
 
-void network_packet_util(){
+void network_packet_util()
+{
     char line[1024];
     FILE *file;
     const char *interface = "eth0";
     /* unsigned long packets_received, packets_sent; */
     unsigned vector[4];
-    
+
     if (!(file = fopen(PROC_NET, "r")))
     {
         fprintf(stderr, "Error opening %s\n", PROC_NET);
@@ -149,7 +151,8 @@ void network_packet_util(){
     }
 }
 
-void uptime_util(){
+void uptime_util()
+{
     char line[1024];
     FILE *file;
     float uptime, idle_time;
@@ -164,11 +167,39 @@ void uptime_util(){
         printf("----------------Uptime Stats---------------\n");
         printf("Uptime: %.2f | Idle Time: %.2f\n", uptime, idle_time);
         fflush(stdout);
+        fclose(file);
     }
-    fclose(file);
-
+    
 }
 
+void disk_util()
+{
+    char line[1024];
+    FILE *file;
+    unsigned int reads, writes;
+    char dev_name[20];
+
+    file = fopen(PROC_DEVICE, "r");
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        sscanf(line, "%*u %*u %s %u %*u %*u %u %*u %*u %*u %*u",
+               dev_name, &reads, &writes);
+
+        reads = 512 * reads;
+        writes = 512 * writes;
+        if (strcmp(dev_name, "sdc") == 0)
+        {
+            printf("----------------Disk Stats---------------\n");
+            printf("Reads: %u | Writes: %u\n", reads, writes);
+            fflush(stdout);
+            fclose(file);
+            return;
+        }
+    }
+    printf("Device not found\n");
+    
+}
 /* Add memory utilization calculation to the main loop */
 int main(int argc, char *argv[])
 {
@@ -193,6 +224,7 @@ int main(int argc, char *argv[])
         printf("Memory Utilization: %.2f%%\n", memory_util());
         network_packet_util();
         uptime_util();
+        disk_util();
         us_sleep(750000);
     }
     return 0;
