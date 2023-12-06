@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
         us_sleep(500);
         i++;
     }
-    FREE(p);
+    /* FREE(p); */
     /* TODO: Fix Mem Leak */
     /* us_sleep(20000000); */
     /* sleep(20); */
