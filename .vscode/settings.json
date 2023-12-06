@@ -1,7 +1,9 @@
 {
-    "C_Cpp.errorSquiggles": "disabled",
+    "C_Cpp.errorSquiggles": "enabled",
     "cmake.configureOnOpen": false,
     "files.associations": {
         "unistd.h": "c"
-    }
+    },
+    "editor.indentSize": "tabSize",
+    "editor.tabSize": 4
 }
