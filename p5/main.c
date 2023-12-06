@@ -21,7 +21,7 @@ _signal_(int signum)
     done = 1;
 }
 
-double cpu_util(const char *s)  
+double cpu_util(const char *s)
 {
     static unsigned sum_, vector_[7];
     unsigned sum, vector[7];
@@ -77,6 +77,7 @@ double get_cpu_util()
     }
     if (fgets(line, sizeof(line), file))
     {
+        fclose(file);
         return cpu_util(line);
     }
     fclose(file);
@@ -87,7 +88,7 @@ double memory_util()
 {
     char line[1024];
     FILE *file;
-    unsigned long mem_total = 0, mem_free = 0, mem_buffer = 0, mem_cache = 0;
+    unsigned long mem_total = 0, mem_free = 0;
     double mem_usage = 0.0;
 
     if (!(file = fopen(PROC_MEMINFO, "r")))
@@ -107,14 +108,6 @@ double memory_util()
         {
             mem_free = value;
         }
-        else if (sscanf(line, "Buffers: %lu kB", &value) == 1)
-        {
-            mem_buffer = value;
-        }
-        else if (sscanf(line, "Cached: %lu kB", &value) == 1)
-        {
-            mem_cache = value;
-        }
     }
 
     fclose(file);
@@ -123,15 +116,6 @@ double memory_util()
     {
         mem_usage = (mem_total - mem_free) / (double)mem_total * 100.0;
     }
-
-    /* 
-    
-    if (mem_total > 0)
-    {
-        mem_usage = (mem_total - (mem_free + mem_buffer + mem_cache)) / (double)mem_total * 100.0;
-    }
-    
-     */
 
     return mem_usage;
 }
@@ -186,7 +170,6 @@ void uptime_util()
         fflush(stdout);
         fclose(file);
     }
-    
 }
 
 void disk_util()
@@ -203,8 +186,6 @@ void disk_util()
         sscanf(line, "%*u %*u %s %*u %*u %u %*u %u %*u %*u %*u",
                dev_name, &reads, &writes);
 
-        /* reads = 512 * reads;
-        writes = 512 * writes; */
         if (strcmp(dev_name, "loop0") == 0)
         {
             printf("-----------------Disk Stats----------------\n");
@@ -215,7 +196,6 @@ void disk_util()
         }
     }
     printf("Device not found\n");
-    
 }
 /* Add memory utilization calculation to the main loop */
 int main(int argc, char *argv[])
